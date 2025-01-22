@@ -15,12 +15,18 @@ app.get('/api/locations', async (req, res) => {
     const apiKey = req.headers.authorization;
     
     try {
+        console.log('Fetching locations...');
         const response = await axios.get(`${HIGHLEVEL_API}/locations/`, {
             headers: { Authorization: `Bearer ${apiKey}` }
         });
+        console.log('Locations fetched successfully');
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch locations' });
+        console.error('Error fetching locations:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch locations',
+            details: error.response?.data || error.message
+        });
     }
 });
 
@@ -28,12 +34,18 @@ app.get('/api/fields/:locationId', async (req, res) => {
     const apiKey = req.headers.authorization;
     
     try {
+        console.log(`Fetching fields for location ${req.params.locationId}...`);
         const response = await axios.get(`${HIGHLEVEL_API}/locations/${req.params.locationId}/custom-fields`, {
             headers: { Authorization: `Bearer ${apiKey}` }
         });
+        console.log('Fields fetched successfully');
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch custom fields' });
+        console.error('Error fetching fields:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to fetch custom fields',
+            details: error.response?.data || error.message
+        });
     }
 });
 
@@ -41,13 +53,19 @@ app.delete('/api/fields/:locationId/:fieldId', async (req, res) => {
     const apiKey = req.headers.authorization;
     
     try {
+        console.log(`Deleting field ${req.params.fieldId} from location ${req.params.locationId}...`);
         await axios.delete(
             `${HIGHLEVEL_API}/locations/${req.params.locationId}/custom-fields/${req.params.fieldId}`,
             { headers: { Authorization: `Bearer ${apiKey}` } }
         );
+        console.log('Field deleted successfully');
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to delete field' });
+        console.error('Error deleting field:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({ 
+            error: 'Failed to delete field',
+            details: error.response?.data || error.message
+        });
     }
 });
 
