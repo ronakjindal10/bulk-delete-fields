@@ -8,16 +8,24 @@ async function handleLogin(event) {
     
     try {
         // Test API key by fetching locations
-        const response = await fetchLocations();
-        if (response.locations) {
+        const response = await fetch('/api/locations', {
+            headers: { 'Authorization': apiKey }
+        });
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.details || data.error || 'Failed to connect to HighLevel');
+        }
+        
+        if (data.locations) {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('fieldSelector').classList.remove('hidden');
-            locations = response.locations;
+            locations = data.locations;
             const fields = await fetchFields(locations[0].id);
             displayFields(fields);
         }
     } catch (error) {
-        alert('Invalid API key or error connecting to HighLevel');
+        alert(error.message || 'Invalid API key or error connecting to HighLevel');
     }
 }
 
@@ -26,6 +34,11 @@ async function fetchLocations() {
         headers: { 'Authorization': apiKey }
     });
     const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.details || data.error || 'Failed to fetch locations');
+    }
+    
     return data;
 }
 
@@ -34,11 +47,21 @@ async function fetchFields(locationId) {
         headers: { 'Authorization': apiKey }
     });
     const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.details || data.error || 'Failed to fetch fields');
+    }
+    
     return data.customFields;
 }
 
 function displayFields(fields) {
     const fieldList = document.getElementById('fieldList');
+    if (!fields || fields.length === 0) {
+        fieldList.innerHTML = '<p class="text-gray-500">No custom fields found in this location.</p>';
+        return;
+    }
+    
     fieldList.innerHTML = fields.map(field => `
         <div class="flex items-center space-x-3">
             <input type="checkbox" 
@@ -86,20 +109,27 @@ async function executeDelete() {
     const progress = document.getElementById('progress');
     const progressContent = document.getElementById('progressContent');
     progress.classList.remove('hidden');
+    document.getElementById('preview').classList.add('hidden');
     
     for (const location of locations) {
         for (const fieldId of selectedFields) {
             try {
-                await fetch(`/api/fields/${location.id}/${fieldId}`, {
+                const response = await fetch(`/api/fields/${location.id}/${fieldId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': apiKey }
                 });
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.details || data.error || 'Failed to delete field');
+                }
+                
                 progressContent.innerHTML += `
                     <div class="text-green-600">✓ Deleted field ${fieldId} from location ${location.id}</div>
                 `;
             } catch (error) {
                 progressContent.innerHTML += `
-                    <div class="text-red-600">✗ Failed to delete field ${fieldId} from location ${location.id}</div>
+                    <div class="text-red-600">✗ Failed to delete field ${fieldId} from location ${location.id}: ${error.message}</div>
                 `;
             }
         }
