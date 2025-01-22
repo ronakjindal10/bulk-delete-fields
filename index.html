@@ -5,7 +5,6 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script>
         let selectedFields = new Set();
-        let locations = [];
         let apiKey = '';
         const API_URL = 'https://rest.gohighlevel.com/v1';
 
@@ -14,7 +13,7 @@
             apiKey = document.getElementById('apiKey').value;
             
             try {
-                const response = await fetch(`${API_URL}/locations/`, {
+                const response = await fetch(`${API_URL}/custom-fields/`, {
                     headers: { 'Authorization': `Bearer ${apiKey}` }
                 });
                 const data = await response.json();
@@ -23,37 +22,22 @@
                     throw new Error(data.error || data.message || 'Failed to connect to API');
                 }
                 
-                if (data.locations?.length > 0) {
+                if (data.customFields?.length > 0) {
                     document.getElementById('authSection').classList.add('hidden');
                     document.getElementById('fieldSelector').classList.remove('hidden');
-                    locations = data.locations;
-                    const fields = await fetchFields(locations[0].id);
-                    displayFields(fields);
+                    displayFields(data.customFields);
                 } else {
-                    throw new Error('No locations found');
+                    throw new Error('No custom fields found');
                 }
             } catch (error) {
                 alert(error.message || 'Invalid API key or error connecting to API');
             }
         }
 
-        async function fetchFields(locationId) {
-            const response = await fetch(`${API_URL}/locations/${locationId}/custom-fields`, {
-                headers: { 'Authorization': `Bearer ${apiKey}` }
-            });
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || data.message || 'Failed to fetch fields');
-            }
-            
-            return data.customFields || [];
-        }
-
         function displayFields(fields) {
             const fieldList = document.getElementById('fieldList');
             if (!fields || fields.length === 0) {
-                fieldList.innerHTML = '<p class="text-gray-500">No custom fields found in this location.</p>';
+                fieldList.innerHTML = '<p class="text-gray-500">No custom fields found.</p>';
                 return;
             }
             
@@ -89,7 +73,7 @@
             const previewContent = document.getElementById('previewContent');
             
             previewContent.innerHTML = `
-                <p>You are about to delete ${selectedFields.size} field(s) across ${locations.length} locations.</p>
+                <p>You are about to delete ${selectedFields.size} field(s).</p>
                 <p class="text-red-600 mt-2">This action cannot be undone!</p>
             `;
             
@@ -109,32 +93,30 @@
             let successCount = 0;
             let failureCount = 0;
             
-            for (const location of locations) {
-                for (const fieldId of selectedFields) {
-                    try {
-                        const response = await fetch(
-                            `${API_URL}/locations/${location.id}/custom-fields/${fieldId}`,
-                            {
-                                method: 'DELETE',
-                                headers: { 'Authorization': `Bearer ${apiKey}` }
-                            }
-                        );
-                        
-                        if (!response.ok) {
-                            const data = await response.json();
-                            throw new Error(data.error || data.message || 'Failed to delete field');
+            for (const fieldId of selectedFields) {
+                try {
+                    const response = await fetch(
+                        `${API_URL}/custom-fields/${fieldId}`,
+                        {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${apiKey}` }
                         }
-                        
-                        successCount++;
-                        progressContent.innerHTML += `
-                            <div class="text-green-600">✓ Deleted field ${fieldId} from location ${location.id}</div>
-                        `;
-                    } catch (error) {
-                        failureCount++;
-                        progressContent.innerHTML += `
-                            <div class="text-red-600">✗ Failed to delete field ${fieldId} from location ${location.id}: ${error.message}</div>
-                        `;
+                    );
+                    
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.error || data.message || 'Failed to delete field');
                     }
+                    
+                    successCount++;
+                    progressContent.innerHTML += `
+                        <div class="text-green-600">✓ Deleted field ${fieldId}</div>
+                    `;
+                } catch (error) {
+                    failureCount++;
+                    progressContent.innerHTML += `
+                        <div class="text-red-600">✗ Failed to delete field ${fieldId}: ${error.message}</div>
+                    `;
                 }
             }
             
