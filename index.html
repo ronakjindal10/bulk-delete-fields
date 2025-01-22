@@ -20,15 +20,17 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.message || 'Failed to connect to API');
+                    throw new Error(data.error || data.message || 'Failed to connect to API');
                 }
                 
-                if (data.locations) {
+                if (data.locations?.length > 0) {
                     document.getElementById('authSection').classList.add('hidden');
                     document.getElementById('fieldSelector').classList.remove('hidden');
                     locations = data.locations;
                     const fields = await fetchFields(locations[0].id);
                     displayFields(fields);
+                } else {
+                    throw new Error('No locations found');
                 }
             } catch (error) {
                 alert(error.message || 'Invalid API key or error connecting to API');
@@ -42,10 +44,10 @@
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch fields');
+                throw new Error(data.error || data.message || 'Failed to fetch fields');
             }
             
-            return data.customFields;
+            return data.customFields || [];
         }
 
         function displayFields(fields) {
@@ -104,6 +106,9 @@
             progress.classList.remove('hidden');
             document.getElementById('preview').classList.add('hidden');
             
+            let successCount = 0;
+            let failureCount = 0;
+            
             for (const location of locations) {
                 for (const fieldId of selectedFields) {
                     try {
@@ -117,13 +122,15 @@
                         
                         if (!response.ok) {
                             const data = await response.json();
-                            throw new Error(data.message || 'Failed to delete field');
+                            throw new Error(data.error || data.message || 'Failed to delete field');
                         }
                         
+                        successCount++;
                         progressContent.innerHTML += `
                             <div class="text-green-600">✓ Deleted field ${fieldId} from location ${location.id}</div>
                         `;
                     } catch (error) {
+                        failureCount++;
                         progressContent.innerHTML += `
                             <div class="text-red-600">✗ Failed to delete field ${fieldId} from location ${location.id}: ${error.message}</div>
                         `;
@@ -133,6 +140,10 @@
             
             progressContent.innerHTML += `
                 <div class="font-bold mt-4">Operation complete!</div>
+                <div class="mt-2">
+                    <span class="text-green-600">${successCount} successful</span> • 
+                    <span class="text-red-600">${failureCount} failed</span>
+                </div>
             `;
         }
     </script>
